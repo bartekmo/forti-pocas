@@ -22,7 +22,7 @@ gcloud compute instances tail-serial-port-output fortidemo-client
 
 ## Optional Steps
 In order to verify HA failover few additional steps related to HA deployment need to be taken care of manually:
-4. After the deployment, log into the primary unit using its instance id as a password and change the password
+1. After the deployment, log into the primary unit using its instance id as a password and change the password
 1. Make sure both cluster nodes are in sync (`get sys ha status`)
 1. Remove the ephemeral public IP from nic0 of secondary device:
 ```
