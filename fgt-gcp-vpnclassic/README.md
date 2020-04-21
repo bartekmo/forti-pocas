@@ -2,6 +2,9 @@ PoCaS (Proof-of-Concept-as-Script)
 # VPN from Fortigate behind NAT to GCP CloudVPN Classic
 This script deploys resources to demonstrate ability of building a working IPSec VPN between a cluster of Fortigate devices located behind a 1-1 NAT and GCP CloudVPN gateway (classic).
 
+## Design
+![PoC Diagram](https://www.lucidchart.com/publicSegments/view/980ab364-affd-4410-b71e-39926df65648/image.png)
+
 ## Prerequisites
 None
 
