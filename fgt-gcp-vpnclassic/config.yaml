@@ -1,0 +1,274 @@
+imports:
+- path: /Users/bartekmo/Documents/GitHub/forti-gcp/fortigate/ha-ap.jinja
+  name: ha-ap.jinja
+
+resources:
+- name: fortidemo-server-vpc
+  type: compute.v1.network
+  properties:
+    autoCreateSubnetworks: no
+- name: fortidemo-server-subnet
+  type: compute.v1.subnetwork
+  properties:
+    region: europe-west1
+    network: $(ref.fortidemo-server-vpc.selfLink)
+    ipCidrRange: 10.10.0.0/24
+- name: fortidemo-cloudvpn
+  type: compute.v1.targetVpnGateway
+  properties:
+    region: europe-west1
+    network: $(ref.fortidemo-server-vpc.selfLink)
+- name: fortidemo-cloudvpn-tunnel
+  type: compute.v1.vpnTunnel
+  properties:
+    region: europe-west1
+    targetVpnGateway: $(ref.fortidemo-cloudvpn.selfLink)
+    peerIp: $(ref.fgt-cluster.Public_IP)
+    sharedSecret: lakjsdnfoi74heksalshjegh
+    localTrafficSelector:
+    - 0.0.0.0/0
+    remoteTrafficSelector:
+    - 0.0.0.0/0
+  metadata:
+    dependsOn:
+    - fortidemo-vpn-frule-udp4500
+- name: fortidemo-vpn-pip
+  type: compute.v1.address
+  properties:
+    region: europe-west1
+    addressType: EXTERNAL
+- name: fortidemo-route-server-to-client
+  type: compute.v1.route
+  properties:
+    network: $(ref.fortidemo-server-vpc.selfLink)
+    nextHopVpnTunnel: $(ref.fortidemo-cloudvpn-tunnel.selfLink)
+    destRange: 10.11.2.0/24
+- name: fortidemo-vpn-frule-esp
+  type: compute.v1.forwardingRule
+  properties:
+    region: europe-west1
+    loadBalancingScheme: EXTERNAL
+    target: $(ref.fortidemo-cloudvpn.selfLink)
+    IPAddress: $(ref.fortidemo-vpn-pip.address)
+    IPProtocol: ESP
+- name: fortidemo-vpn-frule-udp500
+  type: compute.v1.forwardingRule
+  properties:
+    region: europe-west1
+    loadBalancingScheme: EXTERNAL
+    target: $(ref.fortidemo-cloudvpn.selfLink)
+    IPAddress: $(ref.fortidemo-vpn-pip.address)
+    IPProtocol: UDP
+    portRange: 500-500
+- name: fortidemo-vpn-frule-udp4500
+  type: compute.v1.forwardingRule
+  properties:
+    region: europe-west1
+    loadBalancingScheme: EXTERNAL
+    target: $(ref.fortidemo-cloudvpn.selfLink)
+    IPAddress: $(ref.fortidemo-vpn-pip.address)
+    IPProtocol: UDP
+    portRange: 4500-4500
+
+
+- name: fortidemo-external-vpc
+  type: compute.v1.network
+  properties:
+    autoCreateSubnetworks: no
+- name: fortidemo-external-subnet
+  type: compute.v1.subnetwork
+  properties:
+    region: europe-west1
+    network: $(ref.fortidemo-external-vpc.selfLink)
+    ipCidrRange: 10.11.1.0/24
+- name: fortidemo-internal-vpc
+  type: compute.v1.network
+  properties:
+    autoCreateSubnetworks: no
+- name: fortidemo-internal-subnet
+  type: compute.v1.subnetwork
+  properties:
+    region: europe-west1
+    network: $(ref.fortidemo-internal-vpc.selfLink)
+    ipCidrRange: 10.11.2.0/24
+- name: fortidemo-hasync-vpc
+  type: compute.v1.network
+  properties:
+    autoCreateSubnetworks: no
+- name: fortidemo-hasync-subnet
+  type: compute.v1.subnetwork
+  properties:
+    region: europe-west1
+    network: $(ref.fortidemo-hasync-vpc.selfLink)
+    ipCidrRange: 10.11.3.0/24
+- name: fortidemo-mgmt-vpc
+  type: compute.v1.network
+  properties:
+    autoCreateSubnetworks: no
+- name: fortidemo-mgmt-subnet
+  type: compute.v1.subnetwork
+  properties:
+    region: europe-west1
+    network: $(ref.fortidemo-mgmt-vpc.selfLink)
+    ipCidrRange: 10.11.4.0/24
+#- name: fortidemo-route-client-to-server
+#  type: compute.v1.route
+#  properties:
+#    network: $(ref.fortidemo-internal-vpc.selfLink)
+#    destRange: $(ref.fortidemo-server-subnet.ipCidrRange)
+#    nextHopIp: $(ref.fortidemo-fgt1.networkInterfaces[1].networkIP)
+#    priority: 100
+
+- name: fortidemo-client
+  type: compute.v1.instance
+  properties:
+    zone: europe-west1-b
+    machineType: zones/europe-west1-b/machineTypes/f1-micro
+    disks:
+    - deviceName: boot
+      type: PERSISTENT
+      boot: true
+      autoDelete: true
+      initializeParams:
+        sourceImage: projects/ubuntu-os-cloud/global/images/ubuntu-1604-xenial-v20200407
+    networkInterfaces:
+    - network: $(ref.fortidemo-internal-vpc.selfLink)
+      subnetwork: $(ref.fortidemo-internal-subnet.selfLink)
+    metadata:
+      items:
+      - key: serial-port-enable
+        value: "true"
+      - key: startup-script
+        value: "ping $(ref.fortidemo-server.networkInterfaces[0].networkIP) >/dev/console"
+- name: fortidemo-server
+  type: compute.v1.instance
+  properties:
+    zone: europe-west1-b
+    machineType: zones/europe-west1-b/machineTypes/f1-micro
+    disks:
+    - deviceName: boot
+      type: PERSISTENT
+      boot: true
+      autoDelete: true
+      initializeParams:
+        sourceImage: projects/ubuntu-os-cloud/global/images/ubuntu-1604-xenial-v20200407
+    networkInterfaces:
+    - network: $(ref.fortidemo-server-vpc.selfLink)
+      subnetwork: $(ref.fortidemo-server-subnet.selfLink)
+- name: fortidemo-allow-from-vpn
+  type: compute.v1.firewall
+  properties:
+    network: $(ref.fortidemo-server-vpc.selfLink)
+    priority: 100
+    sourceRanges:
+    - 10.11.2.0/24
+    allowed:
+    - IPProtocol: TCP
+    - IPProtocol: UDP
+    - IPProtocol: ICMP
+    - IPProtocol: ESP
+    - IPProtocol: AH
+
+- name: fgt-cluster
+  type: ha-ap.jinja
+  properties:
+    prefix: fortidemo
+    region: europe-west1
+    zone1: europe-west1-d
+    zone2: europe-west1-c
+    networks:
+      external:
+        vpc: $(ref.fortidemo-external-vpc.selfLink)
+        subnet: $(ref.fortidemo-external-subnet.selfLink)
+        cidr: 10.11.1.0/24
+      internal:
+        vpc: $(ref.fortidemo-internal-vpc.selfLink)
+        subnet: $(ref.fortidemo-internal-subnet.selfLink)
+        cidr: 10.11.2.0/24
+      hasync:
+        vpc: $(ref.fortidemo-hasync-vpc.selfLink)
+        subnet: $(ref.fortidemo-hasync-subnet.selfLink)
+        cidr: 10.11.3.0/24
+      mgmt:
+        vpc: $(ref.fortidemo-mgmt-vpc.selfLink)
+        subnet: $(ref.fortidemo-mgmt-subnet.selfLink)
+        cidr: 10.11.4.0/24
+    fwConfig: |
+        config vpn ipsec phase1-interface
+          edit "vpn-to-gcp"
+          set interface "port1"
+          set ike-version 2
+          set keylife 36000
+          set peertype any
+          set net-device disable
+          set proposal aes128-sha256 aes256-sha256 aes128gcm-prfsha256 aes256gcm-prfsha384 chacha20poly1305-prfsha256
+          set remote-gw $(ref.fortidemo-vpn-pip.address)
+          set psksecret lakjsdnfoi74heksalshjegh
+          next
+        end
+        config vpn ipsec phase2-interface
+          edit "vpn-to-gcp"
+          set phase1name "vpn-to-gcp"
+          set proposal aes128-sha1 aes256-sha1 aes128-sha256 aes256-sha256 aes128gcm aes256gcm chacha20poly1305
+          set keylifeseconds 10800
+          next
+        end
+        config firewall address
+          edit "clientSubnet"
+          set subnet 10.11.2.0/24
+          next
+          edit "serverSubnet"
+          set subnet 10.10.0.0/24
+          next
+        end
+        config router static
+          edit 5
+          set dst 10.10.0.0/24
+          set device "vpn-to-gcp"
+          next
+        end
+        config firewall policy
+          edit 1
+          set name "client-to-server-via-vpn"
+          set srcintf "port2"
+          set dstintf "vpn-to-gcp"
+          set srcaddr "clientSubnet"
+          set dstaddr "serverSubnet"
+          set action accept
+          set schedule "always"
+          set service "ALL"
+          set logtraffic all
+          set logtraffic-start enable
+          set utm-status enable
+          set ips-sensor "default"
+          set application-list "default"
+          next
+          edit 2
+          set name "client-out"
+          set srcintf "port2"
+          set dstintf "port1"
+          set srcaddr "clientSubnet"
+          set dstaddr "all"
+          set action accept
+          set schedule "always"
+          set service "ALL"
+          set nat enable
+          set logtraffic all
+          set logtraffic-start enable
+          set utm-status enable
+          set ips-sensor "default"
+          set application-list "default"
+          next
+        end
+
+outputs:
+- name: Next Steps
+  value:
+  - what: Verify status of VPN connection from GCP side
+    how: gcloud compute vpn-tunnels describe fortidemo-cloudvpn-tunnel
+  - what: Check serial console of fortidemo-client to verify it really works and you can ping from behind Fortigate to server behind CloudVPN
+    how: gcloud compute instances tail-serial-port-output fortidemo-client
+  - what: Ctrl+C to interrupt
+  - what: Remove ephemeral public IP from fortidemo-fgt2 nic3 interface
+    how: gcloud compute instances delete-access-config fortidemo-fgt2 --zone europe-west1-c --access-config-name="Temporary External"
+  - what: Kill fortidemo-fgt1 to trigger HA failover
