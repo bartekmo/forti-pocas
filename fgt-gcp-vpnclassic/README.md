@@ -9,13 +9,16 @@ None
 Main steps of this PoC are fully provided by the runme script
 1. Deploy the resources
 ```
-gcloud deployment-manager deployments create gcp-vpn-pocas --config config.yaml```
+gcloud deployment-manager deployments create gcp-vpn-pocas --config config.yaml
+```
 1. Give it a minute and check the status of the VPN tunnel:
 ```
-gcloud compute vpn-tunnels describe fortidemo-cloudvpn-tunnel```
+gcloud compute vpn-tunnels describe fortidemo-cloudvpn-tunnel
+```
 1. Verify the actual connectivity by checking client's serial console output (the client instance is constantly pinging the server):
 ```
-gcloud compute instances tail-serial-port-output fortidemo-client```
+gcloud compute instances tail-serial-port-output fortidemo-client
+```
 
 ## Optional Steps
 In order to verify HA failover few additional steps related to HA deployment need to be taken care of manually:
@@ -23,4 +26,5 @@ In order to verify HA failover few additional steps related to HA deployment nee
 1. Make sure both cluster nodes are in sync (`get sys ha status`)
 2. Remove the ephemeral public IP from nic0 of secondary device:
 ```
-gcloud compute instances delete-access-config fortidemo-fgt2 --zone europe-west1-c --access-config-name="Temporary External"```
+gcloud compute instances delete-access-config fortidemo-fgt2 --zone europe-west1-c --access-config-name="Temporary External"
+```
