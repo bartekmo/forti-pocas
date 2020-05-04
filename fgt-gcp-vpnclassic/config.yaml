@@ -130,7 +130,7 @@ resources:
       boot: true
       autoDelete: true
       initializeParams:
-        sourceImage: projects/ubuntu-os-cloud/global/images/ubuntu-1604-xenial-v20200407
+        sourceImage: projects/ubuntu-os-cloud/global/images/ubuntu-1604-xenial-v20200429
     networkInterfaces:
     - network: $(ref.fortidemo-internal-vpc.selfLink)
       subnetwork: $(ref.fortidemo-internal-subnet.selfLink)
@@ -151,7 +151,7 @@ resources:
       boot: true
       autoDelete: true
       initializeParams:
-        sourceImage: projects/ubuntu-os-cloud/global/images/ubuntu-1604-xenial-v20200407
+        sourceImage: projects/ubuntu-os-cloud/global/images/ubuntu-1604-xenial-v20200429
     networkInterfaces:
     - network: $(ref.fortidemo-server-vpc.selfLink)
       subnetwork: $(ref.fortidemo-server-subnet.selfLink)
